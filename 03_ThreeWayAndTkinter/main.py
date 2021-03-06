@@ -9,10 +9,29 @@ window.geometry('400x400')
 btn_size = 2
 clear_spot = {'column':3, 'row':3}
 
+def count_inverse(order):
+    count = 0
+    for i in range(0, len(order)):
+        for j in range(i, len(order)):
+            if order[i] > order[j]:
+                count += 1
+    return count
+
+def make_solvable(order):
+    if count_inverse(order) % 2 == 0:
+        return order
+    else:
+        _max = max(order)
+        new_order = order[:]
+        new_order[order.index(_max)] = _max-1
+        new_order[order.index(_max-1)] = _max
+        return new_order
+
 def new_game():
     global clear_spot
     new_order = list(range(15))
     random.shuffle(new_order)
+    new_order = make_solvable(new_order)
     for i, btn_idx in enumerate(new_order):
         btns[btn_idx].grid(column=i%4*btn_size, row=i//4*btn_size+1, columnspan=btn_size, rowspan=btn_size, sticky=tk.N+tk.E+tk.S+tk.W)
     clear_spot = {'column':3, 'row':3}
