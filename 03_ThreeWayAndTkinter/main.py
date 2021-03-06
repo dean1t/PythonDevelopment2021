@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import *
+from tkinter import messagebox
 import random
 
 window = Tk()
@@ -39,6 +40,15 @@ def new_game():
 def exit_game():
     window.destroy()
 
+def check_winning():
+    for i, btn in enumerate(btns):
+        info = btn.grid_info()
+        col = info['column'] // btn_size
+        row = info['row'] // btn_size
+        if col != i % 4 or row != i // 4:
+            return False
+    return True
+
 def make_move_fn(btn_idx):
     idx = btn_idx
     def move_btn():
@@ -50,6 +60,9 @@ def make_move_fn(btn_idx):
             return
         btns[idx].grid_configure(column=clear_spot['column']*btn_size, row=clear_spot['row']*btn_size+1)
         clear_spot = {'column': col, 'row': row}
+        if check_winning():
+            messagebox.showinfo('15', 'You won!')
+            new_game()
     return move_btn
 
 for i in range(4*btn_size):
@@ -65,7 +78,5 @@ exit_btn = Button(window, text='Exit', command=exit_game)
 exit_btn.grid(column=5, row=0, columnspan=btn_size, sticky=tk.N+tk.E+tk.S+tk.W)
 
 new_game()
-    # print(btn.grid_info())
-# print(window.grid_bbox())
 
 window.mainloop()
