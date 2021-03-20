@@ -7,11 +7,9 @@ class InputLabel(tk.Label):
         super().__init__(window, textvariable=self.string, relief='sunken', cursor='xterm', font=("Courier", self.fontsize+2), highlightthickness=1)
         
         self.bind('<Key>', func=self.process_key)
-        self.grid(column=0, row=0)#, sticky='news')
-        
         self.bind('<Button-1>', func=self.process_mouse)
-        
-        self.focus()
+
+        self.grid(column=0, row=0, sticky='news')
         
         
         self.pos = 0
@@ -65,6 +63,7 @@ class InputLabel(tk.Label):
                 self.add_symbol(event.char)
     
     def process_mouse(self, event):
+        self.focus()
         self.update_cursor(event.x // self.fontsize)
             
 window = tk.Tk()
