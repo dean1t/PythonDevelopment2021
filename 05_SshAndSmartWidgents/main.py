@@ -1,13 +1,21 @@
 import tkinter as tk
 import re
+import random
 
 FLOAT_PATTERN = r"[+-]?\d*\.\d+|\d+"
 FIGURE_PATTERN = r"^<(%s) (%s) (%s) (%s)> (\d+) (#[a-fA-F0-9]{6}) (#[a-fA-F0-9]{6})$" % (FLOAT_PATTERN, FLOAT_PATTERN, FLOAT_PATTERN, FLOAT_PATTERN)
 
 class Figure:
     def __init__(self, my_str):
-        *self.coords, self.thick, self.color_fill, self.color_bord = re.split(FIGURE_PATTERN, my_str.strip())[1:-1]
-        self.coords = tuple(map(float, self.coords))
+        if my_str is None:
+            # random creating
+            self.coords = None # suppose self.coord will fill up soon
+            self.thick = random.randint(1, 4)
+            self.color_fill = '#%06x' % random.randint(0, 256*256*256-1)
+            self.color_bord = '#%06x' % random.randint(0, 256*256*256-1)
+        else:
+            *self.coords, self.thick, self.color_fill, self.color_bord = re.split(FIGURE_PATTERN, my_str.strip())[1:-1]
+            self.coords = tuple(map(float, self.coords))
     
     def draw(self, canvas, tag):
         canvas.create_oval(*self.coords, width=self.thick, fill=self.color_fill, outline=self.color_bord, tags=tag)
@@ -49,7 +57,9 @@ class TextField(tk.Text):
         )
         self.delete(line+'.0', line+'.end')
         self.insert(line+'.0', str(newfig))
-        self.edit_modified(False)
+
+    def commit_creating(self, figure):
+        self.insert('end', str(figure) + '\n')
 
 # <10.0 10.0 210.0 210.0> 2 #aaaaaa #111111
 # <210.0 10.0 310.0 210.0> 2 #aaaaaa #111111
@@ -65,8 +75,9 @@ class CanvasField(tk.Canvas):
 
         self.moving_dict = {
             'is_moving': False,
-            'old_figure_idx': -1,
-            'old_center': (-1, -1),
+        }
+        self.creating_dict = {
+            'is_creating': False
         }
         # self.bind('<Motion>', self.move)
     
@@ -79,14 +90,29 @@ class CanvasField(tk.Canvas):
                 'old_center': (event.x, event.y)
             }
         else:
-            pass
+            fig = Figure(None)
+            self.creating_dict = {
+                'is_creating': True,
+                'top_left': (event.x, event.y),
+                'figure': fig
+            }
 
     def release(self, event):
         if self.moving_dict['is_moving']:
             dx = event.x - self.moving_dict['old_center'][0]
             dy = event.y - self.moving_dict['old_center'][1]
-            self.move(self.moving_dict['old_figure_idx'], dx, dy)
             self.master.text.commit_move(self.gettags(self.moving_dict['old_figure_idx'])[0], dx, dy)
+            self.moving_dict['is_moving'] = False
+
+        elif self.creating_dict['is_creating']:
+            fig = self.creating_dict['figure']
+            fig.coords = (
+                *self.creating_dict['top_left'],
+                event.x, event.y
+            )
+            if abs(fig.coords[0] - fig.coords[2]) + abs(fig.coords[1] - fig.coords[3]) > 5:
+                self.master.text.commit_creating(fig)
+            self.creating_dict['is_creating'] = False
 
 
 class Application(tk.Tk):
