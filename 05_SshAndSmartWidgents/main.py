@@ -1,7 +1,7 @@
 import tkinter as tk
 import re
 
-FLOAT_PATTERN = r"\d*\.\d+|\d+"
+FLOAT_PATTERN = r"[+-]?\d*\.\d+|\d+"
 FIGURE_PATTERN = r"^<(%s) (%s) (%s) (%s)> (\d+) (#[a-fA-F0-9]{6}) (#[a-fA-F0-9]{6})$" % (FLOAT_PATTERN, FLOAT_PATTERN, FLOAT_PATTERN, FLOAT_PATTERN)
 
 class Figure:
@@ -9,12 +9,11 @@ class Figure:
         *self.coords, self.thick, self.color_fill, self.color_bord = re.split(FIGURE_PATTERN, my_str.strip())[1:-1]
         self.coords = tuple(map(float, self.coords))
     
-    def draw(self, canvas):
-        canvas.create_oval(*self.coords, width=self.thick, fill=self.color_fill, outline=self.color_bord)
+    def draw(self, canvas, tag):
+        canvas.create_oval(*self.coords, width=self.thick, fill=self.color_fill, outline=self.color_bord, tags=tag)
 
     def __str__(self):
-        return "<%.1f %.1f %.1f %.1f> %d %s %s\n" % (
-            self.type,
+        return "<%.1f %.1f %.1f %.1f> %s %s %s" % (
             *map(float, self.coords),
             self.thick,
             self.color_fill, self.color_bord
@@ -35,19 +34,59 @@ class TextField(tk.Text):
         for i, line in enumerate(full_text):
             try:
                 fig = Figure(line)
-                written_figures.append(fig)
-                # fig.draw(app.canvas)
+                written_figures.append((fig, i+1))
             except:
                 self.tag_add('error', '%d.0' % (i+1), '%d.end' % (i+1))
         
         self.master.draw_figures(written_figures)
         self.edit_modified(False)
+    
+    def commit_move(self, line, dx, dy):
+        newfig = Figure(self.get(line+'.0', line+'.end'))
+        newfig.coords = (
+            newfig.coords[0] + dx, newfig.coords[1] + dy,
+            newfig.coords[2] + dx, newfig.coords[3] + dy,
+        )
+        self.delete(line+'.0', line+'.end')
+        self.insert(line+'.0', str(newfig))
+        self.edit_modified(False)
 
 # <10.0 10.0 210.0 210.0> 2 #aaaaaa #111111
+# <210.0 10.0 310.0 210.0> 2 #aaaaaa #111111
+# <10.0 110.0 110.0 310.0> 2 #aaaaaa #111111
+
 
 class CanvasField(tk.Canvas):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.bind('<Button-1>', self.click)
+        self.bind('<ButtonRelease-1>', self.release)
+
+        self.moving_dict = {
+            'is_moving': False,
+            'old_figure_idx': -1,
+            'old_center': (-1, -1),
+        }
+        # self.bind('<Motion>', self.move)
+    
+    def click(self, event):
+        cur_figures = self.find_overlapping(event.x, event.y, event.x, event.y)
+        if len(cur_figures) > 0:
+            self.moving_dict = {
+                'is_moving': True,
+                'old_figure_idx': cur_figures[-1],
+                'old_center': (event.x, event.y)
+            }
+        else:
+            pass
+
+    def release(self, event):
+        if self.moving_dict['is_moving']:
+            dx = event.x - self.moving_dict['old_center'][0]
+            dy = event.y - self.moving_dict['old_center'][1]
+            self.move(self.moving_dict['old_figure_idx'], dx, dy)
+            self.master.text.commit_move(self.gettags(self.moving_dict['old_figure_idx'])[0], dx, dy)
 
 
 class Application(tk.Tk):
@@ -65,8 +104,8 @@ class Application(tk.Tk):
 
     def draw_figures(self, figures):
         self.canvas.delete("all")
-        for fig in figures:
-            fig.draw(self.canvas)
+        for fig, line in figures:
+            fig.draw(self.canvas, tag=str(line))
 
 
 app = Application()
