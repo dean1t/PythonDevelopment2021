@@ -59,7 +59,12 @@ class TextField(tk.Text):
         self.insert(line+'.0', str(newfig))
 
     def commit_creating(self, figure):
-        self.insert('end', str(figure) + '\n')
+        cur_data = self.get('1.0', 'end')
+        if len(cur_data) > 1 and cur_data[-2] != '\n':
+            start = '\n'
+        else:
+            start = ''
+        self.insert('end', start + str(figure) + '\n')
 
 # <10.0 10.0 210.0 210.0> 2 #aaaaaa #111111
 # <210.0 10.0 310.0 210.0> 2 #aaaaaa #111111
